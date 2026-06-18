@@ -1,0 +1,31 @@
+@use '@/styles/variables.scss' as *;
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.verifying {
+  background: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+}
+
+.contacted {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.attention {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+.unhandled {
+  background: rgba(156, 163, 175, 0.15);
+  color: #6B7280;
+}
