@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Button } from '@tarojs/components';
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
-import { useAppStore } from '@/store';
+import { useAppStore, isHandled } from '@/store';
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
@@ -18,8 +18,8 @@ const computeReport = (
   records: { clueId: string; updateHistory: { status: string; note: string }[] }[]
 ): DailyReport => {
   const totalClues = clues.length;
-  const handledClues = clues.filter(c => c.status !== 'unhandled').length;
-  const unhandledClues = clues.filter(c => c.status === 'unhandled').length;
+  const handledClues = clues.filter(c => isHandled(c.status)).length;
+  const unhandledClues = totalClues - handledClues;
 
   const categoryMap: Record<ClueCategory, { count: number; keywords: Set<string> }> = {
     queue: { count: 0, keywords: new Set() },
@@ -65,8 +65,8 @@ const computeReport = (
       let score = 0;
 
       if (engagement > 5000) { needAttention = true; score += 1000 + engagement; }
+      if (!isHandled(c.status) && c.status !== 'unhandled') { needAttention = true; score += 300; }
       if (c.status === 'unhandled') { needAttention = true; score += 500; }
-      if (c.status === 'verifying') { needAttention = true; score += 300; }
       if (c.status === 'attention') { needAttention = true; score += 800; }
       if (hotCategorySet.has(c.category)) { needAttention = true; score += 200 * (categoryMap[c.category].count || 0); }
       if (historyCount > 1) { needAttention = true; score += historyCount * 50; }
@@ -272,7 +272,7 @@ const ReportPage: React.FC = () => {
           <Text className={styles.sectionTitleText}>明日继续观察的热门视频</Text>
         </View>
         <View className={styles.hotExplain}>
-          <Text>仅展示：互动量高 / 仍未处理 / 该类问题重复 ≥3 次 的线索</Text>
+          <Text>仅展示：互动量高 / 未联系景区闭环 / 该类问题重复 ≥3 次 的线索</Text>
         </View>
         <View className={styles.hotList}>
           {reportData.hotVideos.length > 0 ? (

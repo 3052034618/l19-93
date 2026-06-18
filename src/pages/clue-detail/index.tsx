@@ -11,7 +11,7 @@ import {
   STATUS_COLORS,
   ClueStatus
 } from '@/types';
-import { formatNumber, formatTime } from '@/utils';
+import { formatNumber, formatTime, imageToBase64 } from '@/utils';
 
 const statusOptions: { key: ClueStatus }[] = [
   { key: 'verifying' },
@@ -70,11 +70,11 @@ const ClueDetailPage: React.FC = () => {
         sizeType: ['compressed'],
         sourceType: ['camera', 'album']
       });
-      console.log('[ClueDetail] 选择照片', res.tempFilePaths);
-      res.tempFilePaths.forEach(path => {
-        addPhotoToClue(clueId, path);
-      });
-      Taro.showToast({ title: '照片已上传', icon: 'success' });
+      for (const tempPath of res.tempFilePaths) {
+        const persistentUrl = await imageToBase64(tempPath);
+        addPhotoToClue(clueId, persistentUrl);
+      }
+      Taro.showToast({ title: '照片已保存', icon: 'success' });
     } catch (e) {
       console.error('[ClueDetail] 拍照失败', e);
     }
@@ -230,9 +230,9 @@ const ClueDetailPage: React.FC = () => {
           {record && (
             <View className={styles.lastUpdateTip}>
               <Text>🕒 最后更新：</Text>
-              <Text>{formatTime(record.lastUpdatedAt)}</Text>
+              <Text>{formatTime(record.lastUpdatedAt || record.createdAt)}</Text>
               <Text>  ·  </Text>
-              <Text>{record.operator}</Text>
+              <Text>{record.operator || '系统'}</Text>
             </View>
           )}
         </View>
@@ -265,7 +265,7 @@ const ClueDetailPage: React.FC = () => {
         </View>
       </View>
 
-      {record && record.updateHistory && record.updateHistory.length > 1 && (
+      {record && Array.isArray(record.updateHistory) && record.updateHistory.length > 1 && (
         <View className={styles.section}>
           <View className={styles.card}>
             <View className={styles.sectionTitle}>
@@ -275,20 +275,20 @@ const ClueDetailPage: React.FC = () => {
             <View className={styles.timeline}>
               {record.updateHistory.slice().reverse().map((log, i, arr) => (
                 <View key={i} className={styles.timelineItem}>
-                  <View className={styles.timelineDot} style={{ background: STATUS_COLORS[log.status] }} />
+                  <View className={styles.timelineDot} style={{ background: STATUS_COLORS[log.status] || '#9CA3AF' }} />
                   {i < arr.length - 1 && <View className={styles.timelineLine} />}
                   <View className={styles.timelineContent}>
                     <View className={styles.timelineHeader}>
                       <Text
                         className={styles.timelineStatusTag}
-                        style={{ background: STATUS_COLORS[log.status] }}
+                        style={{ background: STATUS_COLORS[log.status] || '#9CA3AF' }}
                       >
-                        {STATUS_LABELS[log.status]}
+                        {STATUS_LABELS[log.status] || log.status}
                       </Text>
                       <Text className={styles.timelineTime}>{formatTime(log.updatedAt)}</Text>
                     </View>
                     {log.note && <Text className={styles.timelineNote}>{log.note}</Text>}
-                    <Text className={styles.timelineOperator}>—— {log.operator}</Text>
+                    <Text className={styles.timelineOperator}>—— {log.operator || '系统'}</Text>
                   </View>
                 </View>
               ))}

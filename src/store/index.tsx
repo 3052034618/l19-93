@@ -9,34 +9,73 @@ import {
   StatusUpdateLog
 } from '@/types';
 import { videoClues as initialClues, patrolRecords as initialRecords } from '@/data/mock';
-import { generateId } from '@/utils';
+import { generateId, imageToBase64 } from '@/utils';
 
-const STORAGE_KEY_CLUES = 'patrol_clues_v1';
-const STORAGE_KEY_RECORDS = 'patrol_records_v1';
-const STORAGE_KEY_SCENIC = 'patrol_current_scenic_v1';
+const STORAGE_KEY_CLUES = 'patrol_clues_v2';
+const STORAGE_KEY_RECORDS = 'patrol_records_v2';
+const STORAGE_KEY_SCENIC = 'patrol_current_scenic_v2';
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
-const enrichInitialRecords = (): PatrolRecord[] => {
+const ensureRecordFields = (r: any): PatrolRecord => {
   const now = new Date().toISOString();
-  return initialRecords.map(r => ({
-    ...r,
-    lastUpdatedAt: r.createdAt || now,
-    updateHistory: [{
-      status: r.status,
-      operator: r.operator,
-      updatedAt: r.createdAt || now,
-      note: r.note || '初始巡检记录'
-    }]
-  }));
+  const createdAt = r.createdAt || now;
+  return {
+    id: r.id || generateId(),
+    clueId: r.clueId || '',
+    clueTitle: r.clueTitle || '',
+    scenicName: r.scenicName || '',
+    category: r.category || 'queue',
+    status: r.status || 'unhandled',
+    operator: r.operator || '',
+    createdAt,
+    note: r.note || '',
+    lastUpdatedAt: r.lastUpdatedAt || createdAt,
+    updateHistory: Array.isArray(r.updateHistory) && r.updateHistory.length > 0
+      ? r.updateHistory
+      : [{
+          status: r.status || 'unhandled',
+          operator: r.operator || '',
+          updatedAt: createdAt,
+          note: r.note || '初始巡检记录'
+        }]
+  };
 };
 
-const loadFromStorage = <T,>(key: string, fallback: T): T => {
+const ensureClueFields = (c: any): VideoClue => ({
+  id: c.id || '',
+  scenicId: c.scenicId || '',
+  scenicName: c.scenicName || '',
+  title: c.title || '',
+  category: c.category || 'queue',
+  publishTime: c.publishTime || '',
+  publishLocation: c.publishLocation || '',
+  likes: c.likes || 0,
+  comments: c.comments || 0,
+  shares: c.shares || 0,
+  complains: Array.isArray(c.complains) ? c.complains : [],
+  status: c.status || 'unhandled',
+  photos: Array.isArray(c.photos) ? c.photos : [],
+  createdAt: c.createdAt || '',
+  operator: c.operator || '',
+  description: c.description || ''
+});
+
+const enrichInitialRecords = (): PatrolRecord[] => {
+  return initialRecords.map(r => ensureRecordFields(r));
+};
+
+const loadFromStorage = <T,>(key: string, fallback: T, validator?: (item: any) => any): T => {
   try {
     const raw = Taro.getStorageSync(key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      console.log(`[Store] 从本地存储加载 ${key}，共 ${Array.isArray(parsed) ? parsed.length : '1'} 条`);
+      if (Array.isArray(parsed) && validator) {
+        const validated = parsed.map(validator);
+        console.log(`[Store] 从本地存储加载 ${key}，共 ${validated.length} 条`);
+        return validated as T;
+      }
+      console.log(`[Store] 从本地存储加载 ${key}`);
       return parsed as T;
     }
   } catch (e) {
@@ -48,11 +87,12 @@ const loadFromStorage = <T,>(key: string, fallback: T): T => {
 const saveToStorage = (key: string, value: unknown): void => {
   try {
     Taro.setStorageSync(key, JSON.stringify(value));
-    console.log(`[Store] 已保存到本地存储 ${key}`);
   } catch (e) {
     console.error(`[Store] 保存本地存储 ${key} 失败`, e);
   }
 };
+
+export const isHandled = (status: ClueStatus): boolean => status === 'contacted';
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const enrichedInitialRecords = enrichInitialRecords();
@@ -61,10 +101,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     loadFromStorage(STORAGE_KEY_SCENIC, 'sc1')
   );
   const [clues, setClues] = useState<VideoClue[]>(() =>
-    loadFromStorage(STORAGE_KEY_CLUES, initialClues)
+    loadFromStorage(STORAGE_KEY_CLUES, initialClues, ensureClueFields)
   );
   const [records, setRecords] = useState<PatrolRecord[]>(() =>
-    loadFromStorage(STORAGE_KEY_RECORDS, enrichedInitialRecords)
+    loadFromStorage(STORAGE_KEY_RECORDS, enrichedInitialRecords, ensureRecordFields)
   );
 
   useEffect(() => {
@@ -80,40 +120,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [records]);
 
   const setCurrentScenicId = useCallback((id: string) => {
-    console.log('[Store] 切换当前景区', id);
     setCurrentScenicIdState(id);
   }, []);
 
   const updateClueStatus = useCallback((id: string, status: ClueStatus, operator: string = '当前用户') => {
-    console.log('[Store] 更新线索状态', { id, status, operator });
     setClues(prev => prev.map(c =>
       c.id === id ? { ...c, status, operator } : c
     ));
   }, []);
 
   const addPhotoToClue = useCallback((id: string, photoUrl: string) => {
-    console.log('[Store] 添加现场照片', { id, photoUrl });
     setClues(prev => prev.map(c =>
       c.id === id ? { ...c, photos: [...c.photos, photoUrl] } : c
     ));
   }, []);
 
   const addRecord = useCallback((record: PatrolRecord) => {
-    console.log('[Store] 新增巡检记录', { recordId: record.id });
-    setRecords(prev => [record, ...prev]);
+    setRecords(prev => [ensureRecordFields(record), ...prev]);
   }, []);
 
   const upsertRecord = useCallback((params: UpsertRecordParams) => {
     const { clueId, clueTitle, scenicName, category, status, operator, note } = params;
     const now = new Date().toISOString();
-    console.log('[Store] upsert 巡检记录', { clueId, status, note });
 
     setRecords(prev => {
       const existingIdx = prev.findIndex(r => r.clueId === clueId);
       const newLog: StatusUpdateLog = { status, operator, updatedAt: now, note };
 
       if (existingIdx >= 0) {
-        const existing = prev[existingIdx];
+        const existing = ensureRecordFields(prev[existingIdx]);
         const updated: PatrolRecord = {
           ...existing,
           status,
@@ -145,7 +180,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const resetAllData = useCallback(() => {
-    console.log('[Store] 重置所有数据为初始演示数据');
     const enriched = enrichInitialRecords();
     setCurrentScenicIdState('sc1');
     setClues(initialClues);

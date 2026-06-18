@@ -3,6 +3,7 @@ import { View, Text, ScrollView } from '@tarojs/components';
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro';
 import styles from './index.module.scss';
 import { useAppStore } from '@/store';
+import { isHandled } from '@/store';
 import { scenicSpots } from '@/data/mock';
 import EntryCard from '@/components/EntryCard';
 import StatCard from '@/components/StatCard';
@@ -26,16 +27,16 @@ const HomePage: React.FC = () => {
   const stats = useMemo(() => {
     const today = getTodayStr();
     const todayClues = clues.filter(c => c.createdAt.startsWith(today));
-    const unhandled = clues.filter(c => c.status === 'unhandled' || c.status === 'attention').length;
+    const handled = clues.filter(c => isHandled(c.status)).length;
+    const unhandled = clues.length - handled;
     const attentionCount = clues.filter(c => c.status === 'attention').length;
-    const handled = records.length;
     return {
       total: todayClues.length || clues.length,
       unhandled,
       attention: attentionCount,
       handled
     };
-  }, [clues, records]);
+  }, [clues]);
 
   const hotClues = useMemo(() => {
     return [...clues]

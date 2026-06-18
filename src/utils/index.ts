@@ -1,3 +1,5 @@
+import Taro from '@tarojs/taro';
+
 export const formatNumber = (num: number): string => {
   if (num >= 10000) {
     return (num / 10000).toFixed(1) + 'w';
@@ -9,13 +11,16 @@ export const formatNumber = (num: number): string => {
 };
 
 export const formatTime = (timeStr: string): string => {
+  if (!timeStr) return '';
   const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
+  if (minutes < 1) return '刚刚';
   if (minutes < 60) return `${minutes}分钟前`;
   if (hours < 24) return `${hours}小时前`;
   if (days < 7) return `${days}天前`;
@@ -50,4 +55,27 @@ export const copyText = async (text: string): Promise<void> => {
     console.error('[Utils] 复制失败', e);
     throw e;
   }
+};
+
+export const imageToBase64 = (tempFilePath: string): Promise<string> => {
+  return new Promise((resolve) => {
+    try {
+      const fs = Taro.getFileSystemManager();
+      const ext = tempFilePath.split('.').pop()?.toLowerCase() || 'jpg';
+      const encoding = 'base64';
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+      fs.readFile({
+        filePath: tempFilePath,
+        encoding,
+        success: (res) => {
+          resolve(`data:${mimeType};base64,${res.data as string}`);
+        },
+        fail: () => {
+          resolve(tempFilePath);
+        }
+      });
+    } catch {
+      resolve(tempFilePath);
+    }
+  });
 };
