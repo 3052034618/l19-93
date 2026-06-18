@@ -2,6 +2,8 @@ export type ClueCategory = 'queue' | 'parking' | 'fraud' | 'service' | 'weather'
 
 export type ClueStatus = 'verifying' | 'contacted' | 'attention' | 'unhandled';
 
+export type ClosureResult = 'resolved' | 'transferred' | 'observing' | 'none';
+
 export interface ScenicSpot {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface VideoClue {
   shares: number;
   complains: string[];
   status: ClueStatus;
+  closureResult: ClosureResult;
   photos: string[];
   createdAt: string;
   operator: string;
