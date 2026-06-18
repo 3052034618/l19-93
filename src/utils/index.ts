@@ -57,25 +57,90 @@ export const copyText = async (text: string): Promise<void> => {
   }
 };
 
-export const imageToBase64 = (tempFilePath: string): Promise<string> => {
-  return new Promise((resolve) => {
-    try {
-      const fs = Taro.getFileSystemManager();
-      const ext = tempFilePath.split('.').pop()?.toLowerCase() || 'jpg';
-      const encoding = 'base64';
+const USER_DATA_PATH = (() => {
+  try {
+    const env = Taro.getEnv();
+    if (env === Taro.ENV_TYPE.WEB) return '';
+    return Taro.env.USER_DATA_PATH || '';
+  } catch {
+    return '';
+  }
+})();
+
+const isPersistedPath = (path: string): boolean => {
+  if (!path) return false;
+  if (path.startsWith('data:')) return true;
+  if (path.startsWith('http://') || path.startsWith('https://')) return true;
+  if (USER_DATA_PATH && path.startsWith(USER_DATA_PATH)) return true;
+  return false;
+};
+
+const isFileExist = (filePath: string): boolean => {
+  try {
+    const fs = Taro.getFileSystemManager();
+    fs.accessSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const persistImage = async (tempFilePath: string): Promise<string> => {
+  if (!tempFilePath) return '';
+
+  if (isPersistedPath(tempFilePath)) {
+    return tempFilePath;
+  }
+
+  try {
+    const fs = Taro.getFileSystemManager();
+    const ext = tempFilePath.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`;
+
+    if (USER_DATA_PATH) {
+      const destPath = `${USER_DATA_PATH}/${fileName}`;
+      try {
+        fs.saveFileSync(tempFilePath, destPath);
+        if (isFileExist(destPath)) {
+          return destPath;
+        }
+      } catch (e) {
+        console.warn('[Utils] saveFile 失败，尝试 base64', e);
+      }
+    }
+
+    return await new Promise<string>((resolve) => {
       const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
       fs.readFile({
         filePath: tempFilePath,
-        encoding,
+        encoding: 'base64',
         success: (res) => {
-          resolve(`data:${mimeType};base64,${res.data as string}`);
+          if (res.data) {
+            resolve(`data:${mimeType};base64,${res.data as string}`);
+          } else {
+            resolve('');
+          }
         },
         fail: () => {
-          resolve(tempFilePath);
+          resolve('');
         }
       });
-    } catch {
-      resolve(tempFilePath);
+    });
+  } catch (e) {
+    console.error('[Utils] 图片持久化全部失败', e);
+    return '';
+  }
+};
+
+export const validatePhotos = (photos: string[]): string[] => {
+  if (!Array.isArray(photos)) return [];
+  return photos.filter(p => {
+    if (!p) return false;
+    if (p.startsWith('data:')) return true;
+    if (p.startsWith('http://') || p.startsWith('https://')) return true;
+    if (USER_DATA_PATH && p.startsWith(USER_DATA_PATH)) {
+      return isFileExist(p);
     }
+    return false;
   });
 };

@@ -61,6 +61,27 @@
   border-radius: $radius-xs;
 }
 
+.photoCount {
+  font-size: $font-size-xs;
+  color: #14B8A6;
+  background: rgba(20, 184, 166, 0.1);
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+}
+
+.photoRow {
+  display: flex;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
+}
+
+.photoThumb {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+}
+
 .noteBox {
   padding: $spacing-sm $spacing-md;
   background: $color-bg-page;

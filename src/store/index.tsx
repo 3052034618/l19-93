@@ -9,11 +9,15 @@ import {
   StatusUpdateLog
 } from '@/types';
 import { videoClues as initialClues, patrolRecords as initialRecords } from '@/data/mock';
-import { generateId, imageToBase64 } from '@/utils';
+import { generateId, persistImage } from '@/utils';
 
 const STORAGE_KEY_CLUES = 'patrol_clues_v2';
 const STORAGE_KEY_RECORDS = 'patrol_records_v2';
 const STORAGE_KEY_SCENIC = 'patrol_current_scenic_v2';
+const STORAGE_KEY_V1_CLUES = 'patrol_clues_v1';
+const STORAGE_KEY_V1_RECORDS = 'patrol_records_v1';
+const STORAGE_KEY_V1_SCENIC = 'patrol_current_scenic_v1';
+const MIGRATION_FLAG = 'patrol_migrated_v2';
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
@@ -55,7 +59,7 @@ const ensureClueFields = (c: any): VideoClue => ({
   shares: c.shares || 0,
   complains: Array.isArray(c.complains) ? c.complains : [],
   status: c.status || 'unhandled',
-  photos: Array.isArray(c.photos) ? c.photos : [],
+  photos: Array.isArray(c.photos) ? c.photos.filter((p: string) => !!p) : [],
   createdAt: c.createdAt || '',
   operator: c.operator || '',
   description: c.description || ''
@@ -65,23 +69,16 @@ const enrichInitialRecords = (): PatrolRecord[] => {
   return initialRecords.map(r => ensureRecordFields(r));
 };
 
-const loadFromStorage = <T,>(key: string, fallback: T, validator?: (item: any) => any): T => {
+const tryReadStorage = (key: string): any => {
   try {
     const raw = Taro.getStorageSync(key);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && validator) {
-        const validated = parsed.map(validator);
-        console.log(`[Store] 从本地存储加载 ${key}，共 ${validated.length} 条`);
-        return validated as T;
-      }
-      console.log(`[Store] 从本地存储加载 ${key}`);
-      return parsed as T;
+      return JSON.parse(raw);
     }
   } catch (e) {
     console.error(`[Store] 读取本地存储 ${key} 失败`, e);
   }
-  return fallback;
+  return null;
 };
 
 const saveToStorage = (key: string, value: unknown): void => {
@@ -92,23 +89,81 @@ const saveToStorage = (key: string, value: unknown): void => {
   }
 };
 
+const migrateV1Data = (): { clues: VideoClue[] | null; records: PatrolRecord[] | null; scenicId: string | null } => {
+  try {
+    const migrated = Taro.getStorageSync(MIGRATION_FLAG);
+    if (migrated) {
+      return { clues: null, records: null, scenicId: null };
+    }
+  } catch {}
+
+  const v1CluesRaw = tryReadStorage(STORAGE_KEY_V1_CLUES);
+  const v1RecordsRaw = tryReadStorage(STORAGE_KEY_V1_RECORDS);
+  const v1ScenicRaw = (() => { try { return Taro.getStorageSync(STORAGE_KEY_V1_SCENIC); } catch { return null; } })();
+
+  if (!v1CluesRaw && !v1RecordsRaw) {
+    try { Taro.setStorageSync(MIGRATION_FLAG, '1'); } catch {}
+    return { clues: null, records: null, scenicId: null };
+  }
+
+  console.log('[Store] 检测到 v1 旧数据，开始迁移');
+  const migratedClues = Array.isArray(v1CluesRaw)
+    ? v1CluesRaw.map((c: any) => ensureClueFields(c))
+    : null;
+  const migratedRecords = Array.isArray(v1RecordsRaw)
+    ? v1RecordsRaw.map((r: any) => ensureRecordFields(r))
+    : null;
+
+  if (migratedClues) saveToStorage(STORAGE_KEY_CLUES, migratedClues);
+  if (migratedRecords) saveToStorage(STORAGE_KEY_RECORDS, migratedRecords);
+  if (v1ScenicRaw) {
+    try { Taro.setStorageSync(STORAGE_KEY_SCENIC, v1ScenicRaw); } catch {}
+  }
+
+  try {
+    Taro.removeStorageSync(STORAGE_KEY_V1_CLUES);
+    Taro.removeStorageSync(STORAGE_KEY_V1_RECORDS);
+    Taro.removeStorageSync(STORAGE_KEY_V1_SCENIC);
+  } catch {}
+  try { Taro.setStorageSync(MIGRATION_FLAG, '1'); } catch {}
+
+  console.log('[Store] v1 数据迁移完成');
+  return { clues: migratedClues, records: migratedRecords, scenicId: v1ScenicRaw };
+};
+
+const loadValidated = <T,>(key: string, fallback: T, validator: (item: any) => any): T => {
+  const data = tryReadStorage(key);
+  if (Array.isArray(data)) {
+    const validated = data.map(validator);
+    console.log(`[Store] 从本地存储加载 ${key}，共 ${validated.length} 条`);
+    return validated as T;
+  }
+  console.log(`[Store] 使用初始数据 ${key}`);
+  return fallback;
+};
+
 export const isHandled = (status: ClueStatus): boolean => status === 'contacted';
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const enrichedInitialRecords = enrichInitialRecords();
 
-  const [currentScenicId, setCurrentScenicIdState] = useState<string>(() =>
-    loadFromStorage(STORAGE_KEY_SCENIC, 'sc1')
-  );
-  const [clues, setClues] = useState<VideoClue[]>(() =>
-    loadFromStorage(STORAGE_KEY_CLUES, initialClues, ensureClueFields)
-  );
-  const [records, setRecords] = useState<PatrolRecord[]>(() =>
-    loadFromStorage(STORAGE_KEY_RECORDS, enrichedInitialRecords, ensureRecordFields)
-  );
+  const migrationResult = migrateV1Data();
+
+  const [currentScenicId, setCurrentScenicIdState] = useState<string>(() => {
+    if (migrationResult.scenicId) return migrationResult.scenicId;
+    try { return Taro.getStorageSync(STORAGE_KEY_SCENIC) || 'sc1'; } catch { return 'sc1'; }
+  });
+  const [clues, setClues] = useState<VideoClue[]>(() => {
+    if (migrationResult.clues) return migrationResult.clues;
+    return loadValidated(STORAGE_KEY_CLUES, initialClues, ensureClueFields);
+  });
+  const [records, setRecords] = useState<PatrolRecord[]>(() => {
+    if (migrationResult.records) return migrationResult.records;
+    return loadValidated(STORAGE_KEY_RECORDS, enrichedInitialRecords, ensureRecordFields);
+  });
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEY_SCENIC, currentScenicId);
+    try { Taro.setStorageSync(STORAGE_KEY_SCENIC, currentScenicId); } catch {}
   }, [currentScenicId]);
 
   useEffect(() => {

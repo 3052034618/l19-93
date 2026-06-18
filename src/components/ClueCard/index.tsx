@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components';
 import styles from './index.module.scss';
 import { VideoClue, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types';
 import StatusTag from '@/components/StatusTag';
-import { formatTime, formatNumber } from '@/utils';
+import { formatTime, formatNumber, validatePhotos } from '@/utils';
 
 interface ClueCardProps {
   clue: VideoClue;
@@ -13,6 +13,7 @@ interface ClueCardProps {
 const ClueCard: React.FC<ClueCardProps> = ({ clue, onClick }) => {
   const totalEngagement = clue.likes + clue.comments + clue.shares;
   const isHot = totalEngagement > 5000;
+  const validPhotos = validatePhotos(clue.photos);
 
   return (
     <View className={styles.clueCard} onClick={onClick}>
@@ -68,10 +69,10 @@ const ClueCard: React.FC<ClueCardProps> = ({ clue, onClick }) => {
           <Text>📍</Text>
           <Text>{clue.publishLocation}</Text>
         </View>
-        {clue.photos.length > 0 && (
+        {validPhotos.length > 0 && (
           <View className={styles.photoIndicator}>
             <Text>📷</Text>
-            <Text>{clue.photos.length}张现场图</Text>
+            <Text>{validPhotos.length}张现场图</Text>
           </View>
         )}
       </View>

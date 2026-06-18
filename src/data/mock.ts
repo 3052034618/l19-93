@@ -297,7 +297,11 @@ export const patrolRecords: PatrolRecord[] = [
     status: 'attention',
     operator: '张三',
     createdAt: hoursAgo(2),
-    note: '已联系景区管理处和市场监管局，建议今日联合执法检查。'
+    note: '已联系景区管理处和市场监管局，建议今日联合执法检查。',
+    lastUpdatedAt: hoursAgo(2),
+    updateHistory: [
+      { status: 'attention', operator: '张三', updatedAt: hoursAgo(2), note: '已联系景区管理处和市场监管局，建议今日联合执法检查。' }
+    ]
   },
   {
     id: 'pr2',
@@ -308,7 +312,11 @@ export const patrolRecords: PatrolRecord[] = [
     status: 'contacted',
     operator: '李四',
     createdAt: hoursAgo(1),
-    note: '已联系古镇管委会和市监局，涉事店铺已停业，正在退款。'
+    note: '已联系古镇管委会和市监局，涉事店铺已停业，正在退款。',
+    lastUpdatedAt: hoursAgo(1),
+    updateHistory: [
+      { status: 'contacted', operator: '李四', updatedAt: hoursAgo(1), note: '已联系古镇管委会和市监局，涉事店铺已停业，正在退款。' }
+    ]
   },
   {
     id: 'pr3',
@@ -319,7 +327,11 @@ export const patrolRecords: PatrolRecord[] = [
     status: 'contacted',
     operator: '王五',
     createdAt: hoursAgo(4),
-    note: '景区已安排保安维持秩序，增设临时排队通道和遮阳棚。'
+    note: '景区已安排保安维持秩序，增设临时排队通道和遮阳棚。',
+    lastUpdatedAt: hoursAgo(4),
+    updateHistory: [
+      { status: 'contacted', operator: '王五', updatedAt: hoursAgo(4), note: '景区已安排保安维持秩序，增设临时排队通道和遮阳棚。' }
+    ]
   }
 ];
 

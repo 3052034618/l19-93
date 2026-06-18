@@ -1,17 +1,20 @@
 import React from 'react';
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { PatrolRecord, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types';
+import { PatrolRecord, CATEGORY_LABELS, CATEGORY_COLORS, VideoClue } from '@/types';
 import StatusTag from '@/components/StatusTag';
-import { formatTime } from '@/utils';
+import { formatTime, validatePhotos } from '@/utils';
 
 interface RecordItemProps {
   record: PatrolRecord;
+  clue?: VideoClue;
 }
 
-const RecordItem: React.FC<RecordItemProps> = ({ record }) => {
+const RecordItem: React.FC<RecordItemProps> = ({ record, clue }) => {
   const updateCount = record.updateHistory?.length || 0;
+  const cluePhotos = clue ? validatePhotos(clue.photos) : [];
+  const photoCount = cluePhotos.length;
 
   const handleClick = () => {
     Taro.navigateTo({ url: `/pages/clue-detail/index?id=${record.clueId}` });
@@ -40,7 +43,20 @@ const RecordItem: React.FC<RecordItemProps> = ({ record }) => {
             <Text>🔄 已跟进 {updateCount} 次</Text>
           </View>
         )}
+        {photoCount > 0 && (
+          <View className={styles.photoCount}>
+            <Text>📷 {photoCount}张照片</Text>
+          </View>
+        )}
       </View>
+
+      {photoCount > 0 && (
+        <View className={styles.photoRow}>
+          {cluePhotos.slice(0, 3).map((p, i) => (
+            <Image key={i} className={styles.photoThumb} src={p} mode="aspectFill" />
+          ))}
+        </View>
+      )}
 
       {record.note && (
         <View className={styles.noteBox}>

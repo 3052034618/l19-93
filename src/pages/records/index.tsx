@@ -11,7 +11,7 @@ import RecordItem from '@/components/RecordItem';
 type StatusFilter = ClueStatus | 'all';
 
 const RecordsPage: React.FC = () => {
-  const { records, resetAllData } = useAppStore();
+  const { records, clues, resetAllData } = useAppStore();
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('all');
 
   useDidShow(() => {
@@ -134,9 +134,10 @@ const RecordsPage: React.FC = () => {
           </View>
         <View className={styles.recordList}>
           {filteredRecords.length > 0 ? (
-            filteredRecords.map(r => (
-              <RecordItem key={r.id} record={r} />
-            ))
+            filteredRecords.map(r => {
+              const clue = clues.find(c => c.id === r.clueId);
+              return <RecordItem key={r.id} record={r} clue={clue} />;
+            })
           ) : (
             <View className={styles.emptyTip}>
               <Text className={styles.emptyIcon}>📋</Text>

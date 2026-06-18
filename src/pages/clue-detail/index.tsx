@@ -11,7 +11,7 @@ import {
   STATUS_COLORS,
   ClueStatus
 } from '@/types';
-import { formatNumber, formatTime, imageToBase64 } from '@/utils';
+import { formatNumber, formatTime, persistImage, validatePhotos } from '@/utils';
 
 const statusOptions: { key: ClueStatus }[] = [
   { key: 'verifying' },
@@ -71,10 +71,16 @@ const ClueDetailPage: React.FC = () => {
         sourceType: ['camera', 'album']
       });
       for (const tempPath of res.tempFilePaths) {
-        const persistentUrl = await imageToBase64(tempPath);
-        addPhotoToClue(clueId, persistentUrl);
+        const persistentUrl = await persistImage(tempPath);
+        if (persistentUrl) {
+          addPhotoToClue(clueId, persistentUrl);
+        } else {
+          Taro.showToast({ title: '照片保存失败，请重试', icon: 'none' });
+        }
       }
-      Taro.showToast({ title: '照片已保存', icon: 'success' });
+      if (res.tempFilePaths.length > 0) {
+        Taro.showToast({ title: '照片已保存', icon: 'success' });
+      }
     } catch (e) {
       console.error('[ClueDetail] 拍照失败', e);
     }
@@ -88,6 +94,8 @@ const ClueDetailPage: React.FC = () => {
   const handlePreviewPhoto = (urls: string[], current: string) => {
     Taro.previewImage({ urls, current });
   };
+
+  const validPhotos = useMemo(() => validatePhotos(clue?.photos || []), [clue?.photos]);
 
   if (!clue) {
     return (
@@ -242,20 +250,20 @@ const ClueDetailPage: React.FC = () => {
         <View className={styles.photoCard}>
           <View className={styles.photoTitle}>
             <Text className={styles.photoTitleText}>
-              现场照片 ({clue.photos.length}/3)
+              现场照片 ({validPhotos.length}/3)
             </Text>
           </View>
           <View className={styles.photoList}>
-            {clue.photos.map((p, i) => (
+            {validPhotos.map((p, i) => (
               <View
                 key={i}
                 className={styles.photoItem}
-                onClick={() => handlePreviewPhoto(clue.photos, p)}
+                onClick={() => handlePreviewPhoto(validPhotos, p)}
               >
                 <Image className={styles.photoImg} src={p} mode="aspectFill" />
               </View>
             ))}
-            {clue.photos.length < 3 && (
+            {validPhotos.length < 3 && (
               <View className={styles.addPhoto} onClick={handleAddPhoto}>
                 <Text className={styles.addPhotoIcon}>📷</Text>
                 <Text className={styles.addPhotoText}>拍照补充</Text>
