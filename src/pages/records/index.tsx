@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Button } from '@tarojs/components';
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
@@ -11,7 +11,7 @@ import RecordItem from '@/components/RecordItem';
 type StatusFilter = ClueStatus | 'all';
 
 const RecordsPage: React.FC = () => {
-  const { records } = useAppStore();
+  const { records, resetAllData } = useAppStore();
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('all');
 
   useDidShow(() => {
@@ -39,8 +39,25 @@ const RecordsPage: React.FC = () => {
     if (activeStatus !== 'all') {
       list = list.filter(r => r.status === activeStatus);
     }
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list.sort((a, b) => {
+      const ta = new Date(a.lastUpdatedAt || a.createdAt).getTime();
+      const tb = new Date(b.lastUpdatedAt || b.createdAt).getTime();
+      return tb - ta;
+    });
   }, [records, activeStatus]);
+
+  const handleReset = () => {
+    Taro.showModal({
+      title: '重置数据',
+      content: '将清空所有巡检操作，恢复为初始演示数据，确认继续？',
+      success: (res) => {
+        if (res.confirm) {
+          resetAllData();
+          Taro.showToast({ title: '已重置', icon: 'success' });
+        }
+      }
+    });
+  };
 
   const filterOptions: { key: StatusFilter; label: string; extra?: string }[] = [
     { key: 'all', label: '全部' },
@@ -108,10 +125,13 @@ const RecordsPage: React.FC = () => {
       )}
 
       <View className={styles.listArea}>
-        <View className={styles.listTitle}>
-          <Text className={styles.listTitleText}>记录列表</Text>
-          <Text className={styles.listTitleCount}>共 {filteredRecords.length} 条</Text>
-        </View>
+          <View className={styles.listTitle}>
+            <Text className={styles.listTitleText}>记录列表</Text>
+            <View className={styles.listTitleRight}>
+              <Text className={styles.listTitleCount}>共 {filteredRecords.length} 条</Text>
+              <Button className={styles.resetBtn} onClick={handleReset}>重置演示数据</Button>
+            </View>
+          </View>
         <View className={styles.recordList}>
           {filteredRecords.length > 0 ? (
             filteredRecords.map(r => (

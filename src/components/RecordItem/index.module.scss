@@ -5,6 +5,12 @@
   border-radius: $radius-lg;
   padding: $spacing-lg;
   box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
 }
 
 .header {
@@ -47,14 +53,34 @@
   color: $color-text-white;
 }
 
-.note {
+.updateCount {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: rgba(30, 86, 160, 0.1);
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+}
+
+.noteBox {
   padding: $spacing-sm $spacing-md;
   background: $color-bg-page;
   border-radius: $radius-md;
+  margin-bottom: $spacing-md;
+}
+
+.noteLabel {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+  margin-bottom: 4rpx;
+}
+
+.note {
+  display: block;
   font-size: $font-size-sm;
   color: $color-text-secondary;
   line-height: 1.6;
-  margin-bottom: $spacing-md;
 }
 
 .footer {
@@ -71,6 +97,19 @@
   gap: 6rpx;
   font-size: $font-size-sm;
   color: $color-text-tertiary;
+}
+
+.timeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4rpx;
+}
+
+.lastUpdate {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
 }
 
 .time {

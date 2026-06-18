@@ -97,9 +97,30 @@
   color: $color-text-primary;
 }
 
+.listTitleRight {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
 .listTitleCount {
   font-size: $font-size-sm;
   color: $color-text-secondary;
+}
+
+.resetBtn {
+  @include button-reset;
+  padding: 0 $spacing-sm;
+  height: 48rpx;
+  background: rgba(239, 68, 68, 0.1);
+  color: $color-error;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    opacity: 0.8;
+  }
 }
 
 .recordList {

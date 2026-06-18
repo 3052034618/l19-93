@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, Button, Image } from '@tarojs/components';
+import { View, Text, ScrollView, Button, Image, Textarea } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
@@ -9,10 +9,9 @@ import {
   CATEGORY_COLORS,
   STATUS_LABELS,
   STATUS_COLORS,
-  ClueStatus,
-  PatrolRecord
+  ClueStatus
 } from '@/types';
-import { formatNumber, formatTime, generateId } from '@/utils';
+import { formatNumber, formatTime } from '@/utils';
 
 const statusOptions: { key: ClueStatus }[] = [
   { key: 'verifying' },
@@ -23,15 +22,21 @@ const statusOptions: { key: ClueStatus }[] = [
 const ClueDetailPage: React.FC = () => {
   const router = useRouter();
   const clueId = router.params?.id || '';
-  const { clues, updateClueStatus, addPhotoToClue, addRecord, records } = useAppStore();
+  const { clues, updateClueStatus, addPhotoToClue, upsertRecord, records } = useAppStore();
 
   const clue = useMemo(() => clues.find(c => c.id === clueId), [clues, clueId]);
+  const record = useMemo(() => records.find(r => r.clueId === clueId), [records, clueId]);
+
   const [selectedStatus, setSelectedStatus] = useState<ClueStatus>();
+  const [note, setNote] = useState('');
 
   useDidShow(() => {
     console.log('[ClueDetail] 页面显示', { clueId });
     if (clue) {
       setSelectedStatus(clue.status);
+    }
+    if (record?.note) {
+      setNote(record.note);
     }
   });
 
@@ -44,26 +49,18 @@ const ClueDetailPage: React.FC = () => {
 
   const handleConfirm = () => {
     if (!selectedStatus || !clue) return;
-    console.log('[ClueDetail] 确认状态', { clueId, status: selectedStatus });
-    updateClueStatus(clueId, selectedStatus);
-
-    const existingRecord = records.find(r => r.clueId === clueId);
-    if (!existingRecord) {
-      const newRecord: PatrolRecord = {
-        id: generateId(),
-        clueId: clue.id,
-        clueTitle: clue.title,
-        scenicName: clue.scenicName,
-        category: clue.category,
-        status: selectedStatus,
-        operator: '当前用户',
-        createdAt: new Date().toISOString(),
-        note: `线索状态更新为：${STATUS_LABELS[selectedStatus]}`
-      };
-      addRecord(newRecord);
-    }
-
-    Taro.showToast({ title: '状态已更新', icon: 'success' });
+    console.log('[ClueDetail] 确认状态', { clueId, status: selectedStatus, note });
+    updateClueStatus(clueId, selectedStatus, '当前用户');
+    upsertRecord({
+      clueId: clue.id,
+      clueTitle: clue.title,
+      scenicName: clue.scenicName,
+      category: clue.category,
+      status: selectedStatus,
+      operator: '当前用户',
+      note: note || `状态更新为：${STATUS_LABELS[selectedStatus]}`
+    });
+    Taro.showToast({ title: '状态已同步', icon: 'success' });
   };
 
   const handleAddPhoto = async () => {
@@ -113,6 +110,14 @@ const ClueDetailPage: React.FC = () => {
           >
             {CATEGORY_LABELS[clue.category]}
           </Text>
+          {selectedStatus && selectedStatus !== 'unhandled' && (
+            <Text
+              className={styles.statusBadge}
+              style={{ background: STATUS_COLORS[selectedStatus] }}
+            >
+              {STATUS_LABELS[selectedStatus]}
+            </Text>
+          )}
         </View>
         <Text className={styles.title}>{clue.title}</Text>
         <View className={styles.metaRow}>
@@ -209,6 +214,31 @@ const ClueDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.section}>
+        <View className={styles.card}>
+          <View className={styles.sectionTitle}>
+            <Text className={styles.sectionIcon}>📋</Text>
+            <Text className={styles.sectionTitleText}>处理说明</Text>
+          </View>
+          <Textarea
+            className={styles.noteTextarea}
+            placeholder="请输入处理情况说明，如：已与景区负责人电话沟通，对方承诺立即整改……"
+            value={note}
+            onInput={e => setNote(e.detail.value)}
+            maxlength={300}
+            autoHeight
+          />
+          {record && (
+            <View className={styles.lastUpdateTip}>
+              <Text>🕒 最后更新：</Text>
+              <Text>{formatTime(record.lastUpdatedAt)}</Text>
+              <Text>  ·  </Text>
+              <Text>{record.operator}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View className={styles.section}>
         <View className={styles.photoCard}>
           <View className={styles.photoTitle}>
             <Text className={styles.photoTitleText}>
@@ -234,6 +264,38 @@ const ClueDetailPage: React.FC = () => {
           </View>
         </View>
       </View>
+
+      {record && record.updateHistory && record.updateHistory.length > 1 && (
+        <View className={styles.section}>
+          <View className={styles.card}>
+            <View className={styles.sectionTitle}>
+              <Text className={styles.sectionIcon}>📜</Text>
+              <Text className={styles.sectionTitleText}>处置时间线</Text>
+            </View>
+            <View className={styles.timeline}>
+              {record.updateHistory.slice().reverse().map((log, i, arr) => (
+                <View key={i} className={styles.timelineItem}>
+                  <View className={styles.timelineDot} style={{ background: STATUS_COLORS[log.status] }} />
+                  {i < arr.length - 1 && <View className={styles.timelineLine} />}
+                  <View className={styles.timelineContent}>
+                    <View className={styles.timelineHeader}>
+                      <Text
+                        className={styles.timelineStatusTag}
+                        style={{ background: STATUS_COLORS[log.status] }}
+                      >
+                        {STATUS_LABELS[log.status]}
+                      </Text>
+                      <Text className={styles.timelineTime}>{formatTime(log.updatedAt)}</Text>
+                    </View>
+                    {log.note && <Text className={styles.timelineNote}>{log.note}</Text>}
+                    <Text className={styles.timelineOperator}>—— {log.operator}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
 
       <View className={styles.footerBar}>
         <Button className={styles.secondaryBtn} onClick={goFeedback}>

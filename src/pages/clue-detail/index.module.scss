@@ -28,9 +28,11 @@
   align-items: center;
   gap: $spacing-sm;
   margin-bottom: $spacing-md;
+  flex-wrap: wrap;
 }
 
-.categoryBadge {
+.categoryBadge,
+.statusBadge {
   padding: 8rpx 20rpx;
   border-radius: $radius-sm;
   font-size: $font-size-sm;
@@ -319,4 +321,95 @@
     opacity: 0.9;
     transform: scale(0.98);
   }
+}
+
+.noteTextarea {
+  width: 100%;
+  min-height: 160rpx;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  border: 2rpx solid $color-border;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.lastUpdateTip {
+  margin-top: $spacing-sm;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.timeline {
+  position: relative;
+  padding-left: $spacing-sm;
+}
+
+.timelineItem {
+  position: relative;
+  padding-bottom: $spacing-lg;
+  display: flex;
+  align-items: flex-start;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.timelineDot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: $radius-round;
+  margin-top: 8rpx;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.timelineLine {
+  position: absolute;
+  left: 7rpx;
+  top: 28rpx;
+  bottom: 0;
+  width: 2rpx;
+  background: $color-divider;
+}
+
+.timelineContent {
+  margin-left: $spacing-md;
+  flex: 1;
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: 6rpx;
+}
+
+.timelineStatusTag {
+  padding: 4rpx 16rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.timelineTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.timelineNote {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.6;
+  margin-bottom: 4rpx;
+}
+
+.timelineOperator {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
 }

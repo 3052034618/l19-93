@@ -36,6 +36,13 @@ export interface ReplyTemplate {
   content: string;
 }
 
+export interface StatusUpdateLog {
+  status: ClueStatus;
+  operator: string;
+  updatedAt: string;
+  note: string;
+}
+
 export interface PatrolRecord {
   id: string;
   clueId: string;
@@ -46,6 +53,8 @@ export interface PatrolRecord {
   operator: string;
   createdAt: string;
   note: string;
+  lastUpdatedAt: string;
+  updateHistory: StatusUpdateLog[];
 }
 
 export interface DailyReport {
@@ -58,14 +67,26 @@ export interface DailyReport {
   scenicStats: { scenicName: string; clueCount: number }[];
 }
 
+export interface UpsertRecordParams {
+  clueId: string;
+  clueTitle: string;
+  scenicName: string;
+  category: ClueCategory;
+  status: ClueStatus;
+  operator: string;
+  note: string;
+}
+
 export interface AppState {
   currentScenicId: string;
   clues: VideoClue[];
   records: PatrolRecord[];
   setCurrentScenicId: (id: string) => void;
-  updateClueStatus: (id: string, status: ClueStatus) => void;
+  updateClueStatus: (id: string, status: ClueStatus, operator?: string) => void;
   addPhotoToClue: (id: string, photoUrl: string) => void;
   addRecord: (record: PatrolRecord) => void;
+  upsertRecord: (params: UpsertRecordParams) => void;
+  resetAllData: () => void;
 }
 
 export const CATEGORY_LABELS: Record<ClueCategory, string> = {

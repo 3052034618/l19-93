@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
+import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import { PatrolRecord, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types';
 import StatusTag from '@/components/StatusTag';
@@ -10,8 +11,14 @@ interface RecordItemProps {
 }
 
 const RecordItem: React.FC<RecordItemProps> = ({ record }) => {
+  const updateCount = record.updateHistory?.length || 0;
+
+  const handleClick = () => {
+    Taro.navigateTo({ url: `/pages/clue-detail/index?id=${record.clueId}` });
+  };
+
   return (
-    <View className={styles.recordItem}>
+    <View className={styles.recordItem} onClick={handleClick}>
       <View className={styles.header}>
         <Text className={styles.title}>{record.clueTitle}</Text>
         <StatusTag status={record.status} />
@@ -28,10 +35,18 @@ const RecordItem: React.FC<RecordItemProps> = ({ record }) => {
           <Text>🏞️</Text>
           <Text>{record.scenicName}</Text>
         </View>
+        {updateCount > 1 && (
+          <View className={styles.updateCount}>
+            <Text>🔄 已跟进 {updateCount} 次</Text>
+          </View>
+        )}
       </View>
 
       {record.note && (
-        <Text className={styles.note}>{record.note}</Text>
+        <View className={styles.noteBox}>
+          <Text className={styles.noteLabel}>最新处理说明</Text>
+          <Text className={styles.note}>{record.note}</Text>
+        </View>
       )}
 
       <View className={styles.footer}>
@@ -39,7 +54,12 @@ const RecordItem: React.FC<RecordItemProps> = ({ record }) => {
           <Text>👤</Text>
           <Text>巡检员：{record.operator}</Text>
         </View>
-        <Text className={styles.time}>{formatTime(record.createdAt)}</Text>
+        <View className={styles.timeWrap}>
+          {record.lastUpdatedAt && record.lastUpdatedAt !== record.createdAt && (
+            <Text className={styles.lastUpdate}>最后更新 {formatTime(record.lastUpdatedAt)}</Text>
+          )}
+          <Text className={styles.time}>创建 {formatTime(record.createdAt)}</Text>
+        </View>
       </View>
     </View>
   );
